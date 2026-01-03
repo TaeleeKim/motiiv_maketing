@@ -6,8 +6,8 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
   try {
     console.log('[Puppeteer] 브라우저 시작:', url);
     
-    // Vercel 환경 감지
-    const isVercel = !!process.env.VERCEL;
+    // Vercel 환경 감지 (로컬 테스트를 위해 USE_VERCEL_CHROMIUM 환경 변수도 확인)
+    const isVercel = !!process.env.VERCEL || process.env.USE_VERCEL_CHROMIUM === 'true';
     
     // Vercel 환경에서는 @sparticuz/chromium + puppeteer-core 사용
     if (isVercel) {
@@ -29,16 +29,34 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       
       // executablePath 가져오기 (함수인 경우 await)
       let chromiumExecutablePath: string;
-      const executablePathValue = chromium.executablePath;
-      if (typeof executablePathValue === 'function') {
-        chromiumExecutablePath = await executablePathValue();
-      } else if (typeof executablePathValue === 'string') {
-        chromiumExecutablePath = executablePathValue;
-      } else {
-        throw new Error('Chromium executablePath를 찾을 수 없습니다.');
+      try {
+        const executablePathValue = chromium.executablePath;
+        if (typeof executablePathValue === 'function') {
+          chromiumExecutablePath = await executablePathValue();
+          console.log('[Puppeteer] Chromium executablePath (함수):', chromiumExecutablePath?.substring(0, 50));
+        } else if (typeof executablePathValue === 'string') {
+          chromiumExecutablePath = executablePathValue;
+          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath?.substring(0, 50));
+        } else {
+          throw new Error('Chromium executablePath를 찾을 수 없습니다.');
+        }
+      } catch (error) {
+        console.error('[Puppeteer] Chromium executablePath 가져오기 실패:', error);
+        throw new Error(`Chromium executablePath 설정 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
+      if (!chromiumExecutablePath) {
+        throw new Error('Chromium executablePath가 비어있습니다.');
       }
       
       const chromiumHeadless = chromium.headless !== undefined ? chromium.headless : true;
+      
+      console.log('[Puppeteer] 브라우저 실행 옵션:', {
+        argsCount: chromiumArgs.length,
+        viewport: chromiumViewport,
+        headless: chromiumHeadless,
+        executablePathExists: !!chromiumExecutablePath,
+      });
       
       browser = await puppeteerCore.default.launch({
         args: [...chromiumArgs, '--hide-scrollbars', '--disable-web-security'],
