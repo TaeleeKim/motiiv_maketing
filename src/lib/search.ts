@@ -137,27 +137,27 @@ export async function searchRelatedPages(
 
   // 각 필터별로 검색 수행
   for (const filter of filters) {
-    try {
+  try {
       // 언어 설정에 맞는 키워드로 검색 쿼리 생성
       const query = buildSearchQuery(searchKeywords, filter);
       
       console.log(`[Search] 필터: ${filter}, 검색 쿼리:`, query);
 
-      const response = await axios.post(
-        'https://google.serper.dev/search',
-        {
-          q: query,
-          num: 20, // PDF 필터링을 위해 더 많이 가져옴
-          gl: config.gl,
-          hl: config.hl,
+    const response = await axios.post(
+      'https://google.serper.dev/search',
+      {
+        q: query,
+        num: 20, // PDF 필터링을 위해 더 많이 가져옴
+        gl: config.gl,
+        hl: config.hl,
+      },
+      {
+        headers: {
+          'X-API-KEY': serperApiKey,
+          'Content-Type': 'application/json',
         },
-        {
-          headers: {
-            'X-API-KEY': serperApiKey,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      }
+    );
 
       // Serper API 응답 상세 로깅
       console.log(`[Search] 필터 ${filter} API 응답:`, {
@@ -169,47 +169,47 @@ export async function searchRelatedPages(
       });
 
       const filterResults: SearchResult[] = [];
-      
+    
       if (response.data?.organic && Array.isArray(response.data.organic)) {
-        for (const item of response.data.organic) {
-          const url = item.link || '';
+      for (const item of response.data.organic) {
+        const url = item.link || '';
           
           // 중복 URL 제거
           if (seenUrls.has(url)) {
             continue;
           }
-          
-          // PDF 파일 제외 (URL 및 제목 확인)
-          if (
-            url.toLowerCase().endsWith('.pdf') ||
-            url.toLowerCase().includes('.pdf?') ||
-            url.toLowerCase().includes('/pdf/') ||
-            item.title?.toLowerCase().includes('[pdf]') ||
-            item.title?.toLowerCase().includes('(pdf)') ||
-            item.title?.toLowerCase().includes('논문')
-          ) {
-            console.log('[Search] PDF 제외:', url);
-            continue;
-          }
+        
+        // PDF 파일 제외 (URL 및 제목 확인)
+        if (
+          url.toLowerCase().endsWith('.pdf') ||
+          url.toLowerCase().includes('.pdf?') ||
+          url.toLowerCase().includes('/pdf/') ||
+          item.title?.toLowerCase().includes('[pdf]') ||
+          item.title?.toLowerCase().includes('(pdf)') ||
+          item.title?.toLowerCase().includes('논문')
+        ) {
+          console.log('[Search] PDF 제외:', url);
+          continue;
+        }
 
           filterResults.push({
-            title: item.title,
-            url: url,
-            snippet: item.snippet || '',
-            source: extractDomain(url),
+          title: item.title,
+          url: url,
+          snippet: item.snippet || '',
+          source: extractDomain(url),
             filter: filter,
-          });
+        });
 
           seenUrls.add(url);
 
           // 각 필터당 5개까지만
           if (filterResults.length >= 5) break;
-        }
       }
+    }
 
       console.log(`[Search] 필터 ${filter} 검색 완료 - ${filterResults.length}개 결과`);
       allResults.push(...filterResults);
-    } catch (error) {
+  } catch (error) {
       if (axios.isAxiosError(error)) {
         console.error(`필터 ${filter} 검색 오류:`, {
           message: error.message,

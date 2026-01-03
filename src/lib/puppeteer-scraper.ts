@@ -1,22 +1,67 @@
-import puppeteer from 'puppeteer';
 import { SEOInfo } from './scraper';
 
 export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: string; content: string; seoInfo: SEOInfo }> {
-  let browser;
+  let browser: any;
   
   try {
     console.log('[Puppeteer] 브라우저 시작:', url);
     
-    // Puppeteer 브라우저 시작
-    browser = await puppeteer.launch({
+    // Vercel 환경 감지
+    const isVercel = !!process.env.VERCEL;
+    
+    // Vercel 환경에서는 @sparticuz/chromium + puppeteer-core 사용
+    if (isVercel) {
+      console.log('[Puppeteer] Vercel 환경 감지, @sparticuz/chromium 사용');
+      const chromiumModule = await import('@sparticuz/chromium');
+      const puppeteerCore = await import('puppeteer-core');
+      
+      // chromium 모듈에서 실제 chromium 객체 가져오기
+      const chromium = (chromiumModule.default || chromiumModule) as any;
+      
+      // setGraphicsMode 설정 (있는 경우에만)
+      if (typeof chromium.setGraphicsMode === 'function') {
+        chromium.setGraphicsMode(false);
+      }
+      
+      // chromium 속성 안전하게 가져오기
+      const chromiumArgs = Array.isArray(chromium.args) ? chromium.args : [];
+      const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
+      
+      // executablePath 가져오기 (함수인 경우 await)
+      let chromiumExecutablePath: string;
+      const executablePathValue = chromium.executablePath;
+      if (typeof executablePathValue === 'function') {
+        chromiumExecutablePath = await executablePathValue();
+      } else if (typeof executablePathValue === 'string') {
+        chromiumExecutablePath = executablePathValue;
+      } else {
+        throw new Error('Chromium executablePath를 찾을 수 없습니다.');
+      }
+      
+      const chromiumHeadless = chromium.headless !== undefined ? chromium.headless : true;
+      
+      browser = await puppeteerCore.default.launch({
+        args: [...chromiumArgs, '--hide-scrollbars', '--disable-web-security'],
+        defaultViewport: chromiumViewport,
+        executablePath: chromiumExecutablePath,
+        headless: chromiumHeadless,
+      });
+    } else {
+      // 로컬 환경에서는 일반 puppeteer 사용
+      console.log('[Puppeteer] 로컬 환경, 일반 puppeteer 사용');
+      const puppeteer = await import('puppeteer');
+      browser = await puppeteer.default.launch({
       headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
       ],
     });
+    }
 
     const page = await browser.newPage();
     

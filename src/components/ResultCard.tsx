@@ -97,14 +97,14 @@ export default function ResultCard({ result }: ResultCardProps) {
               
               return (
                 <div key={idx} className="bg-yellow-50 p-4 rounded-md">
-                  <div className="flex justify-between items-center mb-2">
+          <div className="flex justify-between items-center mb-2">
                     <h5 className="text-xs font-semibold text-gray-600">{languageLabel}</h5>
-                    <button
+            <button
                       onClick={() => copyToClipboard(draft.text, `comment-${idx}`)}
                       className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 px-2 py-1 min-h-[32px] touch-manipulation"
-                    >
+            >
                       {copiedUrl === `comment-${idx}` ? '복사됨!' : '복사'}
-                    </button>
+            </button>
                   </div>
                   <p className="text-gray-700 text-sm sm:text-base leading-relaxed break-words">{draft.text}</p>
                 </div>
