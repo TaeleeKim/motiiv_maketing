@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getAllUtmRecords, deleteUtmRecord, clearAllUtmRecords, getUtmStats, UtmRecord } from '@/lib/utm-storage';
+import { getAllUtmRecords, deleteUtmRecord, clearAllUtmRecords, getUtmStats } from '@/lib/utm-storage';
+import { UtmRecord } from '@/types';
 
 export default function Dashboard() {
   const [records, setRecords] = useState<UtmRecord[]>([]);
