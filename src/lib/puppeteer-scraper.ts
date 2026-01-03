@@ -6,8 +6,10 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
   try {
     console.log('[Puppeteer] 브라우저 시작:', url);
     
-    // Vercel 환경 감지 (로컬 테스트를 위해 USE_VERCEL_CHROMIUM 환경 변수도 확인)
-    const isVercel = !!process.env.VERCEL || process.env.USE_VERCEL_CHROMIUM === 'true';
+    // Vercel 환경 감지
+    // 로컬에서는 USE_VERCEL_CHROMIUM을 설정해도 실제 Vercel 환경이 아니면 일반 puppeteer 사용
+    // 실제 Vercel 배포 환경에서만 @sparticuz/chromium 사용
+    const isVercel = !!process.env.VERCEL;
     
     // Vercel 환경에서는 @sparticuz/chromium + puppeteer-core 사용
     if (isVercel) {
@@ -16,27 +18,65 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       const puppeteerCore = await import('puppeteer-core');
       
       // chromium 모듈에서 실제 chromium 객체 가져오기
-      const chromium = (chromiumModule.default || chromiumModule) as any;
+      // default export가 있으면 사용, 없으면 전체 모듈 사용
+      let chromium: any;
+      if (chromiumModule.default) {
+        chromium = chromiumModule.default;
+      } else {
+        chromium = chromiumModule;
+      }
+      
+      // chromium 객체가 유효한지 확인
+      if (!chromium) {
+        throw new Error('Chromium 모듈을 로드할 수 없습니다.');
+      }
       
       // chromium 속성 안전하게 가져오기
+      // 버전 119는 안정적이며 graphics 속성 문제가 없음
       const chromiumArgs = Array.isArray(chromium.args) ? chromium.args : [];
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
       
-      // executablePath 가져오기 (함수인 경우 await)
+      // executablePath 가져오기
+      // GitHub 이슈 #5662 참고: 실행 파일 경로 문제 해결
+      // https://github.com/puppeteer/puppeteer/issues/5662
       let chromiumExecutablePath: string;
       try {
-        const executablePathValue = chromium.executablePath;
-        if (typeof executablePathValue === 'function') {
-          chromiumExecutablePath = await executablePathValue();
-          console.log('[Puppeteer] Chromium executablePath (함수):', chromiumExecutablePath?.substring(0, 50));
-        } else if (typeof executablePathValue === 'string') {
-          chromiumExecutablePath = executablePathValue;
-          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath?.substring(0, 50));
+        // chromium.executablePath() 함수 호출
+        // 이 함수는 Chromium 바이너리의 실제 경로를 반환해야 함
+        if (typeof chromium.executablePath === 'function') {
+          chromiumExecutablePath = await chromium.executablePath();
+          console.log('[Puppeteer] Chromium executablePath (함수):', chromiumExecutablePath);
+          
+          // 경로가 유효한지 확인
+          if (!chromiumExecutablePath || chromiumExecutablePath.trim() === '') {
+            throw new Error('Chromium executablePath가 비어있습니다.');
+          }
+          
+          // 경로 형식 검증 (Vercel 환경에서는 /var/task/로 시작해야 함)
+          if (!chromiumExecutablePath.startsWith('/') && !chromiumExecutablePath.includes('chromium')) {
+            console.warn('[Puppeteer] Chromium executablePath 경로 형식이 예상과 다릅니다:', chromiumExecutablePath);
+          }
+        } else if (typeof chromium.executablePath === 'string') {
+          chromiumExecutablePath = chromium.executablePath;
+          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath);
         } else {
+          // executablePath가 없는 경우, chromium 객체에서 직접 찾기 시도
+          console.error('[Puppeteer] executablePath를 찾을 수 없음. Chromium 객체 구조:', {
+            keys: Object.keys(chromium),
+            hasExecutablePath: 'executablePath' in chromium,
+            executablePathType: typeof chromium.executablePath,
+          });
           throw new Error('Chromium executablePath를 찾을 수 없습니다.');
         }
       } catch (error) {
         console.error('[Puppeteer] Chromium executablePath 가져오기 실패:', error);
+        console.error('[Puppeteer] Chromium 객체 전체 구조:', {
+          hasExecutablePath: 'executablePath' in chromium,
+          executablePathType: typeof chromium.executablePath,
+          chromiumKeys: Object.keys(chromium).slice(0, 20),
+          chromiumModuleType: typeof chromiumModule,
+          chromiumModuleKeys: Object.keys(chromiumModule).slice(0, 10),
+        });
         throw new Error(`Chromium executablePath 설정 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       
@@ -57,12 +97,53 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
         executablePathExists: !!chromiumExecutablePath,
       });
       
-      browser = await puppeteerCore.default.launch({
-        args: [...chromiumArgs, '--hide-scrollbars', '--disable-web-security'],
-        defaultViewport: chromiumViewport,
-        executablePath: chromiumExecutablePath,
-        headless: chromiumHeadless,
-      });
+      // launch 옵션 설정
+      // GitHub 이슈 #5662 해결 방법 적용:
+      // - executablePath 명시적 설정
+      // - 서버리스 환경에 맞는 args 추가
+      // - ENOEXEC/ENOENT 에러 방지
+      try {
+        console.log('[Puppeteer] 브라우저 실행 시도:', {
+          executablePath: chromiumExecutablePath?.substring(0, 100),
+          argsCount: chromiumArgs.length + 7,
+        });
+        
+        browser = await puppeteerCore.default.launch({
+          args: [
+            ...chromiumArgs,
+            '--hide-scrollbars',
+            '--disable-web-security',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process', // Vercel 환경에서 안정성을 위해 추가
+          ],
+          defaultViewport: chromiumViewport,
+          executablePath: chromiumExecutablePath,
+          headless: chromiumHeadless,
+          // ignoreDefaultArgs: true, // 기본 args 무시 (필요시 주석 해제)
+        });
+        
+        console.log('[Puppeteer] 브라우저 실행 성공');
+      } catch (launchError) {
+        console.error('[Puppeteer] 브라우저 실행 실패:', launchError);
+        console.error('[Puppeteer] 실행 파일 경로:', chromiumExecutablePath);
+        console.error('[Puppeteer] 실행 파일 경로 존재 여부 확인 필요');
+        
+        // ENOEXEC/ENOENT 에러인 경우 더 자세한 정보 제공
+        if (launchError instanceof Error) {
+          if (launchError.message.includes('ENOEXEC') || launchError.message.includes('ENOENT')) {
+            throw new Error(
+              `Chromium 실행 파일을 찾을 수 없습니다. ` +
+              `경로: ${chromiumExecutablePath}. ` +
+              `@sparticuz/chromium 패키지가 올바르게 설치되었는지 확인하세요. ` +
+              `GitHub 이슈 참고: https://github.com/puppeteer/puppeteer/issues/5662`
+            );
+          }
+        }
+        throw launchError;
+      }
     } else {
       // 로컬 환경에서는 일반 puppeteer 사용
       console.log('[Puppeteer] 로컬 환경, 일반 puppeteer 사용');
