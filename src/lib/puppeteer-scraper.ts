@@ -18,11 +18,6 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       // chromium 모듈에서 실제 chromium 객체 가져오기
       const chromium = (chromiumModule.default || chromiumModule) as any;
       
-      // setGraphicsMode 설정 (있는 경우에만)
-      if (typeof chromium.setGraphicsMode === 'function') {
-        chromium.setGraphicsMode(false);
-      }
-      
       // chromium 속성 안전하게 가져오기
       const chromiumArgs = Array.isArray(chromium.args) ? chromium.args : [];
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
@@ -44,6 +39,10 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
         console.error('[Puppeteer] Chromium executablePath 가져오기 실패:', error);
         throw new Error(`Chromium executablePath 설정 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
+      
+      // setGraphicsMode 제거됨 - 크롤링에 필수가 아니며 최신 버전에서 에러 발생 가능
+      // 크롤링 작업에는 GPU 가속이 필요하지 않으므로 생략해도 문제 없음
+      // 메모리 최적화는 chromium.args에 이미 '--disable-gpu' 등이 포함되어 처리됨
       
       if (!chromiumExecutablePath) {
         throw new Error('Chromium executablePath가 비어있습니다.');
