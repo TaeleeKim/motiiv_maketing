@@ -9,10 +9,13 @@ import { AnalysisResult } from '@/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { urls, targetAudience, language, searchFilter = ['reddit'] } = body;
+    const { urls, targetAudience, language, searchFilter = ['reddit'], userKeywords = [] } = body;
     
     // searchFilter가 배열이 아닌 경우 배열로 변환 (하위 호환성)
     const filters = Array.isArray(searchFilter) ? searchFilter : [searchFilter];
+    
+    // userKeywords가 배열이 아닌 경우 배열로 변환 (하위 호환성)
+    const keywords = Array.isArray(userKeywords) ? userKeywords : [];
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json(
@@ -38,8 +41,8 @@ export async function POST(request: NextRequest) {
           seoInfo,
         });
 
-        // 3. 관련 페이지 검색 (언어 및 필터 설정 전달)
-        const relatedPages = await searchRelatedPages(analysis.keywords, language, filters);
+        // 3. 관련 페이지 검색 (언어 및 필터 설정 전달, 사용자 입력 키워드 포함)
+        const relatedPages = await searchRelatedPages(analysis.keywords, language, filters, keywords);
 
         // 4. UTM 파라미터 추가
         const pagesWithTracking = relatedPages.map(page => ({

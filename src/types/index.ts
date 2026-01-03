@@ -26,6 +26,7 @@ export interface ProcessRequest {
   targetAudience?: string;
   language?: 'ko' | 'en' | 'both';
   searchFilter?: ('all' | 'reddit' | 'quora' | 'linkedin' | 'engineer_forum' | 'medium' | 'velog' | 'tistory' | 'naver' | 'brunch' | 'daum')[];
+  userKeywords?: string[];
 }
 
 export interface ScrapeResult {

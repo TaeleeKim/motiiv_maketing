@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 interface UrlInputProps {
-  onSubmit: (urls: string[], options: { targetAudience: string; language: string; searchFilter: string[] }) => void;
+  onSubmit: (urls: string[], options: { targetAudience: string; language: string; searchFilter: string[]; userKeywords: string[] }) => void;
   loading: boolean;
 }
 
@@ -27,6 +27,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
   const [targetAudience, setTargetAudience] = useState('구조/토목 엔지니어');
   const [language, setLanguage] = useState('both');
   const [searchFilters, setSearchFilters] = useState<FilterOption[]>(['reddit', 'quora', 'linkedin', 'engineer_forum', 'medium']);
+  const [userKeywords, setUserKeywords] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +47,12 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
       return;
     }
 
-    onSubmit(urls, { targetAudience, language, searchFilter: searchFilters });
+    const keywords = userKeywords
+      .split('\n')
+      .map(keyword => keyword.trim())
+      .filter(keyword => keyword.length > 0);
+
+    onSubmit(urls, { targetAudience, language, searchFilter: searchFilters, userKeywords: keywords });
   };
 
   return (
@@ -94,6 +100,22 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
             <option value="ko">한국어만</option>
             <option value="en">영어만</option>
           </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            추가 검색 키워드 (선택사항, 한 줄에 하나씩)
+          </label>
+          <textarea
+            value={userKeywords}
+            onChange={(e) => setUserKeywords(e.target.value)}
+            className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="steel structure&#10;welding analysis&#10;structural engineering"
+            disabled={loading}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            입력한 키워드는 AI가 추출한 키워드와 함께 검색에 사용됩니다.
+          </p>
         </div>
 
         <div className="mb-4">

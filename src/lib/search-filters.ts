@@ -97,8 +97,8 @@ export function buildSearchQuery(
     return '';
   }
 
-  // 최대 2개 키워드만 사용 (검색 정확도 향상)
-  const limitedKeywords = keywords.slice(0, 2);
+  // 최대 5개 키워드까지 사용 (사용자 입력 키워드 포함)
+  const limitedKeywords = keywords.slice(0, 5);
   
   // 키워드를 공백으로 연결 (간단한 형식)
   const baseQuery = limitedKeywords.join(' ');

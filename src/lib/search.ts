@@ -27,13 +27,14 @@ function cleanKeywords(keywords: string[]): string[] {
       return cleaned;
     })
     .filter(k => k.length > 0 && k.length < 50) // 너무 짧거나 긴 키워드 제거
-    .slice(0, 2); // 최대 2개만 사용
+    .slice(0, 5); // 최대 5개까지 사용
 }
 
 export async function searchRelatedPages(
   keywords: string[],
   language: 'ko' | 'en' | 'both' = 'both',
-  filters: SearchFilter[] = ['reddit']
+  filters: SearchFilter[] = ['reddit'],
+  userKeywords: string[] = []
 ): Promise<SearchResult[]> {
   const serperApiKey = process.env.SERPER_API_KEY;
   
@@ -43,11 +44,26 @@ export async function searchRelatedPages(
 
   // 키워드 정제
   const cleanedKeywords = cleanKeywords(keywords);
+  
+  // 사용자 입력 키워드 정제 (공백 제거, 빈 문자열 필터링)
+  const cleanedUserKeywords = userKeywords
+    .map(k => k.trim())
+    .filter(k => k.length > 0 && k.length < 50);
+  
+  // 사용자 입력 키워드를 우선적으로 포함하고, 정제된 키워드와 결합
+  // 최대 5개까지 사용 (사용자 입력 키워드 우선)
+  const allKeywords = [
+    ...cleanedUserKeywords.slice(0, 3), // 사용자 입력 키워드 최대 3개
+    ...cleanedKeywords.slice(0, 5), // 정제된 키워드 최대 5개
+  ].filter((k, index, self) => self.indexOf(k) === index); // 중복 제거
+  
   console.log(`[Search] 원본 키워드:`, keywords);
   console.log(`[Search] 정제된 키워드:`, cleanedKeywords);
+  console.log(`[Search] 사용자 입력 키워드:`, userKeywords);
+  console.log(`[Search] 최종 검색 키워드:`, allKeywords);
 
-  if (cleanedKeywords.length === 0) {
-    console.warn('[Search] 정제된 키워드가 없습니다.');
+  if (allKeywords.length === 0) {
+    console.warn('[Search] 검색할 키워드가 없습니다.');
     return [];
   }
 
@@ -70,8 +86,8 @@ export async function searchRelatedPages(
   // 각 필터별로 검색 수행
   for (const filter of filters) {
     try {
-      // 정제된 키워드로 검색 쿼리 생성
-      const query = buildSearchQuery(cleanedKeywords, filter);
+      // 정제된 키워드와 사용자 입력 키워드로 검색 쿼리 생성
+      const query = buildSearchQuery(allKeywords, filter);
       
       console.log(`[Search] 필터: ${filter}, 검색 쿼리:`, query);
 

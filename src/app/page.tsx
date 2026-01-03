@@ -12,7 +12,7 @@ export default function Home() {
 
   const handleSubmit = async (
     urls: string[],
-    options: { targetAudience: string; language: string; searchFilter: string[] }
+    options: { targetAudience: string; language: string; searchFilter: string[]; userKeywords: string[] }
   ) => {
     setLoading(true);
     setError(null);
@@ -29,6 +29,7 @@ export default function Home() {
           targetAudience: options.targetAudience,
           language: options.language,
           searchFilter: options.searchFilter,
+          userKeywords: options.userKeywords,
         }),
       });
 
