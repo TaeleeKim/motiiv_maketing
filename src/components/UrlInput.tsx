@@ -23,10 +23,10 @@ const FILTER_OPTIONS: { value: FilterOption; label: string }[] = [
 ];
 
 export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
-  const [urlText, setUrlText] = useState('');
+  const [urlText, setUrlText] = useState('https://motiiv.ai/en/article/view/311');
   const [targetAudience, setTargetAudience] = useState('구조/토목 엔지니어');
   const [language, setLanguage] = useState('both');
-  const [searchFilters, setSearchFilters] = useState<FilterOption[]>(['reddit']);
+  const [searchFilters, setSearchFilters] = useState<FilterOption[]>(['reddit', 'quora', 'linkedin', 'engineer_forum', 'medium']);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
