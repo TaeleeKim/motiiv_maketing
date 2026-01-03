@@ -30,6 +30,33 @@ function cleanKeywords(keywords: string[]): string[] {
     .slice(0, 5); // 최대 5개까지 사용
 }
 
+/**
+ * 키워드를 한글/영어로 분리
+ */
+function separateKeywordsByLanguage(keywords: string[]): {
+  korean: string[];
+  english: string[];
+} {
+  const korean: string[] = [];
+  const english: string[] = [];
+  
+  keywords.forEach(keyword => {
+    // 한글이 포함되어 있는지 확인
+    const hasKorean = /[가-힣]/.test(keyword);
+    
+    if (hasKorean) {
+      korean.push(keyword);
+    } else {
+      // 영문, 숫자, 공백만 있는 경우 영어 키워드로 분류
+      if (/^[\w\s-]+$/.test(keyword) && keyword.trim().length > 0) {
+        english.push(keyword);
+      }
+    }
+  });
+  
+  return { korean, english };
+}
+
 export async function searchRelatedPages(
   keywords: string[],
   language: 'ko' | 'en' | 'both' = 'both',
@@ -50,19 +77,44 @@ export async function searchRelatedPages(
     .map(k => k.trim())
     .filter(k => k.length > 0 && k.length < 50);
   
-  // 사용자 입력 키워드를 우선적으로 포함하고, 정제된 키워드와 결합
-  // 최대 5개까지 사용 (사용자 입력 키워드 우선)
+  // 모든 키워드 결합 (사용자 입력 우선)
   const allKeywords = [
     ...cleanedUserKeywords.slice(0, 3), // 사용자 입력 키워드 최대 3개
     ...cleanedKeywords.slice(0, 5), // 정제된 키워드 최대 5개
   ].filter((k, index, self) => self.indexOf(k) === index); // 중복 제거
   
+  // 언어별로 키워드 분리
+  const { korean: koreanKeywords, english: englishKeywords } = separateKeywordsByLanguage(allKeywords);
+  
+  // 언어 설정에 따라 검색에 사용할 키워드 선택
+  let searchKeywords: string[] = [];
+  if (language === 'ko') {
+    // 한국어만: 한글 키워드 우선, 없으면 영어 키워드 사용
+    searchKeywords = koreanKeywords.length > 0 ? koreanKeywords : englishKeywords;
+  } else if (language === 'en') {
+    // 영어만: 영어 키워드 우선, 없으면 한글 키워드 사용
+    searchKeywords = englishKeywords.length > 0 ? englishKeywords : koreanKeywords;
+  } else {
+    // both: 영어 키워드가 있으면 우선 사용하고, 한글 키워드도 추가
+    if (englishKeywords.length > 0) {
+      searchKeywords = [...englishKeywords, ...koreanKeywords];
+    } else {
+      searchKeywords = koreanKeywords;
+    }
+  }
+  
+  // 최대 5개로 제한
+  searchKeywords = searchKeywords.slice(0, 5);
+  
   console.log(`[Search] 원본 키워드:`, keywords);
   console.log(`[Search] 정제된 키워드:`, cleanedKeywords);
   console.log(`[Search] 사용자 입력 키워드:`, userKeywords);
-  console.log(`[Search] 최종 검색 키워드:`, allKeywords);
+  console.log(`[Search] 언어 설정:`, language);
+  console.log(`[Search] 한글 키워드:`, koreanKeywords);
+  console.log(`[Search] 영어 키워드:`, englishKeywords);
+  console.log(`[Search] 최종 검색 키워드:`, searchKeywords);
 
-  if (allKeywords.length === 0) {
+  if (searchKeywords.length === 0) {
     console.warn('[Search] 검색할 키워드가 없습니다.');
     return [];
   }
@@ -86,8 +138,8 @@ export async function searchRelatedPages(
   // 각 필터별로 검색 수행
   for (const filter of filters) {
     try {
-      // 정제된 키워드와 사용자 입력 키워드로 검색 쿼리 생성
-      const query = buildSearchQuery(allKeywords, filter);
+      // 언어 설정에 맞는 키워드로 검색 쿼리 생성
+      const query = buildSearchQuery(searchKeywords, filter);
       
       console.log(`[Search] 필터: ${filter}, 검색 쿼리:`, query);
 
@@ -163,7 +215,7 @@ export async function searchRelatedPages(
           message: error.message,
           status: error.response?.status,
           data: error.response?.data,
-          query: buildSearchQuery(cleanedKeywords, filter),
+          query: buildSearchQuery(searchKeywords, filter),
         });
       } else {
         console.error(`필터 ${filter} 검색 오류:`, error);

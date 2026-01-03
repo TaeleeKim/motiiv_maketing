@@ -42,3 +42,15 @@ export interface AnalyzeResult {
   commentDrafts: CommentDraft[];
 }
 
+export interface UtmRecord {
+  id: string;
+  originalUrl: string;
+  trackingUrl: string;
+  source: string;
+  medium: string;
+  campaign: string;
+  createdAt: string;
+  title?: string;
+  filter?: string;
+}
+

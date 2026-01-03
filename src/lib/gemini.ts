@@ -100,8 +100,13 @@ ${language === 'both'
 
     const modelName = 'gemini-2.5-flash'; // 현재 지원되는 텍스트용 모델
 
-    // 언어에 따라 출력 토큰 수 조정 (both일 때는 2개 버전 생성)
-    const maxOutputTokens = language === 'both' ? 1536 : 1024;
+    // 언어에 따라 출력 토큰 수 조정
+    // 한국어는 영어보다 토큰을 더 많이 사용하므로 더 많은 토큰 할당
+    // both: 한국어+영어 2개 버전, ko: 한국어만, en: 영어만
+    const maxOutputTokens = 
+      language === 'both' ? 2048 :  // 한국어+영어 2개 버전
+      language === 'ko' ? 1536 :    // 한국어는 토큰을 더 많이 사용
+      1024;                          // 영어는 상대적으로 적음
 
     let response;
     let retries = 0;

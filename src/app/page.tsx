@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import UrlInput from '@/components/UrlInput';
 import ResultCard from '@/components/ResultCard';
 import { AnalysisResult } from '@/types';
+import { saveUtmRecord } from '@/lib/utm-storage';
 
 export default function Home() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -39,6 +41,33 @@ export default function Home() {
 
       const data = await response.json();
       setResults(data.results);
+      
+      if (typeof window !== 'undefined') {
+        data.results.forEach((result: AnalysisResult) => {
+          result.relatedPages.forEach((page) => {
+            if (page.trackingUrl) {
+              try {
+                const url = new URL(page.trackingUrl);
+                const source = url.searchParams.get('utm_source') || 'unknown';
+                const medium = url.searchParams.get('utm_medium') || 'comment';
+                const campaign = url.searchParams.get('utm_campaign') || 'unknown';
+                
+                saveUtmRecord({
+                  originalUrl: page.url,
+                  trackingUrl: page.trackingUrl,
+                  source,
+                  medium,
+                  campaign,
+                  title: page.title,
+                  filter: page.filter,
+                });
+              } catch (error) {
+                console.error('UTM 저장 실패:', error);
+              }
+            }
+          });
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     } finally {
@@ -54,9 +83,17 @@ export default function Home() {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             MOTIIV 마케팅 자동화 도구
           </h1>
-          <p className="text-sm sm:text-base text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600 mb-4">
             URL 분석 → 키워드 추출 → 관련 커뮤니티 추천
           </p>
+          <div className="flex justify-center gap-4">
+            <Link
+              href="/dashboard"
+              className="text-sm sm:text-base text-blue-600 hover:text-blue-800 underline"
+            >
+              UTM 대시보드
+            </Link>
+          </div>
         </div>
 
         {/* 입력 폼 */}

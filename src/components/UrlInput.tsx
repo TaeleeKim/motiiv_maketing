@@ -97,7 +97,6 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
             disabled={loading}
           >
             <option value="both">한국어 + 영어</option>
-            <option value="ko">한국어만</option>
             <option value="en">영어만</option>
           </select>
         </div>
