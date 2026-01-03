@@ -47,14 +47,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* 헤더 */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             MOTIIV 마케팅 자동화 도구
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             URL 분석 → 키워드 추출 → 관련 커뮤니티 추천
           </p>
         </div>
@@ -82,7 +82,7 @@ export default function Home() {
         {/* 결과 */}
         {results.length > 0 && (
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">
               분석 결과
             </h2>
             {results.map((result, idx) => (
@@ -93,11 +93,11 @@ export default function Home() {
 
         {/* 안내 메시지 */}
         {!loading && results.length === 0 && !error && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">
               사용 방법
             </h3>
-            <ol className="text-left text-blue-800 space-y-2 max-w-2xl mx-auto">
+            <ol className="text-left text-sm sm:text-base text-blue-800 space-y-2 max-w-2xl mx-auto">
               <li>1. 분석할 URL을 입력하세요 (여러 개 가능)</li>
               <li>2. 타겟 독자와 언어 설정을 확인하세요</li>
               <li>3. 분석 시작 버튼을 클릭하세요</li>

@@ -56,8 +56,8 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">URL 입력</h2>
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 text-gray-800">URL 입력</h2>
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
@@ -67,7 +67,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
           <textarea
             value={urlText}
             onChange={(e) => setUrlText(e.target.value)}
-            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-32 px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="https://example.com/article1&#10;https://example.com/article2"
             disabled={loading}
           />
@@ -81,7 +81,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
             type="text"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           />
         </div>
@@ -93,7 +93,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={loading}
           >
             <option value="both">한국어 + 영어</option>
@@ -109,7 +109,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
           <textarea
             value={userKeywords}
             onChange={(e) => setUserKeywords(e.target.value)}
-            className="w-full h-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-24 px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="steel structure&#10;welding analysis&#10;structural engineering"
             disabled={loading}
           />
@@ -124,7 +124,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
           </label>
           <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
             {FILTER_OPTIONS.map((option) => (
-              <label key={option.value} className="flex items-center mb-2 cursor-pointer">
+              <label key={option.value} className="flex items-center mb-2 cursor-pointer min-h-[44px]">
                 <input
                   type="checkbox"
                   checked={searchFilters.includes(option.value)}
@@ -136,9 +136,9 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
                     }
                   }}
                   disabled={loading}
-                  className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="mr-3 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                 />
-                <span className="text-sm text-gray-700">{option.label}</span>
+                <span className="text-sm sm:text-base text-gray-700">{option.label}</span>
               </label>
             ))}
           </div>
@@ -152,7 +152,7 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full bg-blue-600 text-white py-3 px-4 text-base sm:text-lg font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors min-h-[44px] touch-manipulation"
         >
           {loading ? '처리 중...' : '분석 시작'}
         </button>
