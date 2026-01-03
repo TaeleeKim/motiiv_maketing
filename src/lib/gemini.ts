@@ -68,13 +68,21 @@ export async function analyzeContent(options: AnalyzeOptions) {
     commentDraftInstruction = '다음 2가지 버전의 커뮤니티 댓글 초안을 각각 작성 (각 2-3문장, 광고X, 자연스럽게):\n- 한국어 버전 1개\n- 영어 버전 1개';
   }
 
+  // 키워드 추출 지시사항: 영어 키워드를 우선적으로 추출
+  let keywordInstruction = '';
+  if (language === 'en') {
+    keywordInstruction = '영어로만 작성된 키워드 5개 (SEO 정보를 참고하여 보강)';
+  } else {
+    keywordInstruction = '키워드 5개 (영어 키워드를 우선적으로 추출하고, 필요시 한국어 키워드도 포함, SEO 정보를 참고하여 보강)';
+  }
+
   const prompt = `제목: ${title}
 내용:
 ${effectiveContent}${seoContext}
 
 ${targetAudience} 관점에서:
 1. 요약 (3문장)
-2. 키워드 5개 (${languageInstruction}, SEO 정보를 참고하여 보강)
+2. ${keywordInstruction}
 3. ${commentDraftInstruction}
 
 
