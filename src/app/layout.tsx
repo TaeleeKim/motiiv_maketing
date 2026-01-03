@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MOTIIV 마케팅 자동화 도구",
+  title: "MOTIIV Marketing Workbench",
   description: "URL 요약 및 관련 커뮤니티 추천 시스템",
 };
 

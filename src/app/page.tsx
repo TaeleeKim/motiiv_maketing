@@ -81,7 +81,7 @@ export default function Home() {
         {/* 헤더 */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            MOTIIV 마케팅 자동화 도구
+            MOTIIV Marketing Workbench
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mb-4">
             URL 분석 → 키워드 추출 → 관련 커뮤니티 추천

@@ -121,9 +121,9 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             검색 대상 (여러 개 선택 가능, 각 필터당 5개 결과)
           </label>
-          <div className="border border-gray-300 rounded-md p-3 max-h-48 overflow-y-auto">
+          <div className="border border-gray-300 rounded-md p-2 sm:p-3 max-h-48 overflow-y-auto">
             {FILTER_OPTIONS.map((option) => (
-              <label key={option.value} className="flex items-center mb-2 cursor-pointer min-h-[44px]">
+              <label key={option.value} className="flex items-center mb-1.5 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={searchFilters.includes(option.value)}
@@ -135,9 +135,9 @@ export default function UrlInput({ onSubmit, loading }: UrlInputProps) {
                     }
                   }}
                   disabled={loading}
-                  className="mr-3 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+                  className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                 />
-                <span className="text-sm sm:text-base text-gray-700">{option.label}</span>
+                <span className="text-sm text-gray-700">{option.label}</span>
               </label>
             ))}
           </div>
