@@ -36,7 +36,25 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error('API 요청 실패');
+        // API route에서 반환한 에러 메시지 확인
+        let errorMessage = 'API 요청 실패';
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = `API 요청 실패: ${errorData.error}`;
+          } else {
+            errorMessage = `API 요청 실패 (상태 코드: ${response.status})`;
+          }
+        } catch (parseError) {
+          // JSON 파싱 실패 시 상태 코드만 표시
+          errorMessage = `API 요청 실패 (상태 코드: ${response.status})`;
+        }
+        console.error('[API] 요청 실패:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+        });
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

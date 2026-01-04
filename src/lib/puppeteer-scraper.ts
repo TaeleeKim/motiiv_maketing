@@ -38,29 +38,15 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
       
       // executablePath 가져오기
-      // Vercel 배포 가이드에 따르면:
-      // Build Time: @sparticuz/chromium의 postinstall이 public/chromium-pack.tar 생성
-      // Runtime: chromium-min이 호스팅된 tar 파일에서 다운로드 및 추출
+      // chromium-min은 자동으로 GitHub releases에서 Chromium 바이너리를 다운로드
+      // tar 파일 URL을 전달하지 않고 자동 다운로드 사용 (더 안정적)
       let chromiumExecutablePath: string;
       try {
         if (typeof chromium.executablePath === 'function') {
-          // chromium-min의 executablePath()는 tar 파일 URL을 받을 수 있음
-          // Vercel에 배포되면 public/chromium-pack.tar가 호스팅됨
-          // 환경 변수나 자동 감지로 URL 결정
-          const tarUrl = process.env.CHROMIUM_PACK_URL || 
-                        (process.env.VERCEL_URL 
-                          ? `https://${process.env.VERCEL_URL}/chromium-pack.tar`
-                          : undefined);
-          
-          if (tarUrl) {
-            console.log('[Puppeteer] Chromium tar URL 사용:', tarUrl);
-            chromiumExecutablePath = await chromium.executablePath(tarUrl);
-          } else {
-            // URL이 없으면 자동으로 GitHub releases에서 다운로드 시도
-            console.log('[Puppeteer] Chromium 자동 다운로드 시도 (GitHub releases)');
-            chromiumExecutablePath = await chromium.executablePath();
-          }
-          
+          // chromium-min이 자동으로 GitHub releases에서 다운로드
+          // URL을 전달하지 않으면 자동으로 최신 버전 다운로드
+          console.log('[Puppeteer] Chromium 자동 다운로드 시작 (GitHub releases)');
+          chromiumExecutablePath = await chromium.executablePath();
           console.log('[Puppeteer] Chromium executablePath (다운로드 완료):', chromiumExecutablePath?.substring(0, 100));
           
           // 경로가 유효한지 확인
@@ -85,6 +71,16 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
           executablePathType: typeof chromium.executablePath,
           chromiumKeys: Object.keys(chromium).slice(0, 20),
         });
+        
+        // tar 파일 관련 에러인 경우
+        if (error instanceof Error && error.message.includes('tar')) {
+          throw new Error(
+            `Chromium tar 파일 처리 실패: ${error.message}. ` +
+            `chromium-min이 자동으로 GitHub releases에서 다운로드하도록 설정되어 있습니다. ` +
+            `Vercel 로그를 확인하여 네트워크 문제가 있는지 확인하세요.`
+          );
+        }
+        
         throw new Error(`Chromium executablePath 설정 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
       

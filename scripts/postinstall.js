@@ -37,14 +37,20 @@ if (process.env.VERCEL || process.env.CI) {
       return;
     }
     
-    // tar 파일 생성
-    const tarPath = path.join(publicDir, 'chromium-pack.tar');
+    // tar.gz 파일 생성 (gzip 압축)
+    // chromium-min은 .tar.gz 형식을 기대할 수 있음
+    const tarPath = path.join(publicDir, 'chromium-pack.tar.gz');
     const cwd = chromiumPath;
     
-    console.log('[Postinstall] Chromium 바이너리를 tar 파일로 패키징 중...');
+    console.log('[Postinstall] Chromium 바이너리를 tar.gz 파일로 패키징 중...');
+    // -czf: c(create) z(gzip) f(file)
     execSync(`tar -czf "${tarPath}" -C "${binPath}" .`, { stdio: 'inherit' });
     
     console.log('[Postinstall] Chromium 패키징 완료:', tarPath);
+    
+    // 파일 크기 확인
+    const stats = fs.statSync(tarPath);
+    console.log('[Postinstall] 생성된 tar.gz 파일 크기:', (stats.size / 1024 / 1024).toFixed(2), 'MB');
   } catch (error) {
     console.error('[Postinstall] 에러:', error.message);
     // 에러가 발생해도 빌드를 계속 진행
