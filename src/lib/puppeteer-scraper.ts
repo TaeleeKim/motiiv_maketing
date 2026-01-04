@@ -1,5 +1,10 @@
 import { SEOInfo } from './scraper';
 
+// Chromium executablePath 캐싱 (함수 실행 간 재사용)
+// Vercel 서버리스 환경에서 Cold start 시 다운로드, Warm start 시 캐시 재사용
+let cachedChromiumPath: string | null = null;
+let chromiumPathPromise: Promise<string> | null = null;
+
 export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: string; content: string; seoInfo: SEOInfo }> {
   let browser: any;
   
@@ -34,42 +39,73 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       
       // chromium 속성 안전하게 가져오기
       // chromium-min은 Vercel 환경에 최적화된 경량 버전
-      const chromiumArgs = Array.isArray(chromium.args) ? chromium.args : [];
+      const chromiumArgs: string[] = Array.isArray(chromium.args) ? chromium.args : [];
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
       
-      // executablePath 가져오기
+      // executablePath 가져오기 (캐싱 적용)
       // chromium-min은 GitHub releases에서 Chromium 바이너리를 다운로드
       // bin 디렉토리가 없을 경우 GitHub releases URL을 명시적으로 전달해야 함
+      // 캐싱: 같은 함수 실행 컨테이너 내에서 재사용하여 다운로드 시간 절약
       let chromiumExecutablePath: string;
       try {
-        if (typeof chromium.executablePath === 'function') {
-          // chromium-min 버전 131의 GitHub releases URL 구성
-          // chromium-min은 chromium의 경량 버전이므로 chromium의 releases를 사용
-          const chromiumVersion = '131.0.0';
-          const githubReleasesUrl = `https://github.com/Sparticuz/chromium/releases/download/v${chromiumVersion}/chromium-v${chromiumVersion}-pack.tar`;
-          
-          console.log('[Puppeteer] Chromium GitHub releases URL:', githubReleasesUrl);
-          console.log('[Puppeteer] Chromium 다운로드 시작...');
-          
-          // GitHub releases URL을 명시적으로 전달
-          chromiumExecutablePath = await chromium.executablePath(githubReleasesUrl);
-          
-          console.log('[Puppeteer] Chromium executablePath (다운로드 완료):', chromiumExecutablePath?.substring(0, 100));
-          
-          // 경로가 유효한지 확인
-          if (!chromiumExecutablePath || chromiumExecutablePath.trim() === '') {
-            throw new Error('Chromium executablePath가 비어있습니다.');
+        // 캐시된 경로가 있으면 재사용
+        if (cachedChromiumPath) {
+          console.log('[Puppeteer] Chromium 캐시된 경로 사용:', cachedChromiumPath.substring(0, 100));
+          chromiumExecutablePath = cachedChromiumPath;
+        } else if (chromiumPathPromise) {
+          // 다른 요청이 이미 다운로드 중이면 대기
+          console.log('[Puppeteer] Chromium 다운로드 대기 중...');
+          const path = await chromiumPathPromise;
+          if (!path) {
+            throw new Error('Chromium executablePath 다운로드 실패');
           }
-        } else if (typeof chromium.executablePath === 'string') {
-          chromiumExecutablePath = chromium.executablePath;
-          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath?.substring(0, 100));
+          chromiumExecutablePath = path;
+          cachedChromiumPath = path;
         } else {
-          console.error('[Puppeteer] executablePath를 찾을 수 없음. Chromium 객체 구조:', {
-            keys: Object.keys(chromium),
-            hasExecutablePath: 'executablePath' in chromium,
-            executablePathType: typeof chromium.executablePath,
-          });
-          throw new Error('Chromium executablePath를 찾을 수 없습니다.');
+          // 첫 번째 요청: 다운로드 시작
+          if (typeof chromium.executablePath === 'function') {
+            // chromium-min 버전 131의 GitHub releases URL 구성
+            // chromium-min은 chromium의 경량 버전이므로 chromium의 releases를 사용
+            const chromiumVersion = '131.0.0';
+            const githubReleasesUrl = `https://github.com/Sparticuz/chromium/releases/download/v${chromiumVersion}/chromium-v${chromiumVersion}-pack.tar`;
+            
+            console.log('[Puppeteer] Chromium GitHub releases URL:', githubReleasesUrl);
+            console.log('[Puppeteer] Chromium 다운로드 시작...');
+            
+            // 다운로드 Promise 생성 (동시 요청 방지)
+            const downloadPromise = chromium.executablePath(githubReleasesUrl).then((path: string) => {
+              cachedChromiumPath = path;
+              chromiumPathPromise = null;
+              return path;
+            });
+            chromiumPathPromise = downloadPromise;
+            
+            // GitHub releases URL을 명시적으로 전달
+            chromiumExecutablePath = await downloadPromise;
+            
+            console.log('[Puppeteer] Chromium executablePath (다운로드 완료):', chromiumExecutablePath?.substring(0, 100));
+            
+            // 경로가 유효한지 확인
+            if (!chromiumExecutablePath || chromiumExecutablePath.trim() === '') {
+              throw new Error('Chromium executablePath가 비어있습니다.');
+            }
+          } else if (typeof chromium.executablePath === 'string') {
+            chromiumExecutablePath = chromium.executablePath;
+            cachedChromiumPath = chromiumExecutablePath;
+            console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath?.substring(0, 100));
+          } else {
+            console.error('[Puppeteer] executablePath를 찾을 수 없음. Chromium 객체 구조:', {
+              keys: Object.keys(chromium),
+              hasExecutablePath: 'executablePath' in chromium,
+              executablePathType: typeof chromium.executablePath,
+            });
+            throw new Error('Chromium executablePath를 찾을 수 없습니다.');
+          }
+        }
+        
+        // null 체크 (타입 안정성)
+        if (!chromiumExecutablePath) {
+          throw new Error('Chromium executablePath가 비어있습니다.');
         }
       } catch (error) {
         console.error('[Puppeteer] Chromium executablePath 가져오기 실패:', error);
@@ -117,22 +153,65 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       });
       
       // launch 옵션 설정
-      // libnss3.so 에러 해결: chromium.args에 이미 필요한 모든 옵션이 포함되어 있음
-      // 추가 args는 중복을 피하고 필요한 것만 추가
+      // libnss3.so 에러 해결: chromium-min이 다운로드한 Chromium은 필요한 라이브러리를 포함하지 않을 수 있음
+      // 시스템 라이브러리 의존성을 최소화하는 옵션 추가
       try {
         // chromium.args에 이미 포함된 옵션 확인
-        const existingArgs = new Set(chromiumArgs);
+        const existingArgs = new Set(chromiumArgs.map(arg => arg.toLowerCase()));
         
-        // 추가로 필요한 args만 추가 (중복 방지)
+        // 시스템 라이브러리 문제를 해결하기 위한 필수 옵션들
+        // chromium-min이 다운로드한 Chromium은 일부 시스템 라이브러리(libnss3.so 등)가 없을 수 있음
+        // libnss3.so는 SSL/TLS 인증서 검증에 사용되지만, 크롤링에는 필수가 아님
+        // SSL 관련 기능을 비활성화하여 라이브러리 의존성 제거
+        const requiredArgs = [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--disable-background-networking',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-breakpad',
+          '--disable-client-side-phishing-detection',
+          '--disable-default-apps',
+          '--disable-features=TranslateUI',
+          '--disable-hang-monitor',
+          '--disable-ipc-flooding-protection',
+          '--disable-popup-blocking',
+          '--disable-prompt-on-repost',
+          '--disable-renderer-backgrounding',
+          '--disable-sync',
+          '--disable-translate',
+          '--metrics-recording-only',
+          '--no-first-run',
+          '--safebrowsing-disable-auto-update',
+          '--enable-automation',
+          '--password-store=basic',
+          '--use-mock-keychain',
+          '--single-process', // 단일 프로세스 모드로 시스템 라이브러리 의존성 최소화
+          // SSL/TLS 관련 옵션: libnss3.so 의존성 제거
+          '--ignore-certificate-errors', // SSL 인증서 오류 무시
+          '--ignore-ssl-errors', // SSL 오류 무시
+          '--ignore-certificate-errors-spki-list', // SPKI 목록 무시
+          '--disable-web-security', // 웹 보안 비활성화 (CORS 등)
+        ] as const;
+        
+        // 중복 제거하면서 필수 옵션 추가
         const additionalArgs: string[] = [];
+        requiredArgs.forEach((arg) => {
+          if (!existingArgs.has(arg.toLowerCase())) {
+            additionalArgs.push(arg);
+          }
+        });
+        
+        // 추가로 필요한 UI 옵션
         if (!existingArgs.has('--hide-scrollbars')) {
           additionalArgs.push('--hide-scrollbars');
         }
-        if (!existingArgs.has('--disable-web-security')) {
-          additionalArgs.push('--disable-web-security');
-        }
         
-        // chromium.args를 먼저 사용 (시스템 라이브러리 문제 해결을 위한 옵션 포함)
+        // chromium.args를 먼저 사용하고, 필수 옵션 추가
         const launchArgs = [...chromiumArgs, ...additionalArgs];
         
         console.log('[Puppeteer] 브라우저 실행 시도:', {
@@ -140,6 +219,7 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
           argsCount: launchArgs.length,
           chromiumArgsCount: chromiumArgs.length,
           additionalArgsCount: additionalArgs.length,
+          hasSingleProcess: launchArgs.includes('--single-process'),
         });
         
         browser = await puppeteerCore.default.launch({
@@ -164,7 +244,7 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
             throw new Error(
               `Chromium 실행 파일을 찾을 수 없습니다. ` +
               `경로: ${chromiumExecutablePath}. ` +
-              `@sparticuz/chromium 패키지가 올바르게 설치되었는지 확인하세요. ` +
+              `@sparticuz/chromium-min 패키지가 올바르게 설치되었는지 확인하세요. ` +
               `GitHub 이슈 참고: https://github.com/puppeteer/puppeteer/issues/5662`
             );
           }
@@ -176,7 +256,8 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
             throw new Error(
               `Chromium 실행에 필요한 시스템 라이브러리를 찾을 수 없습니다. ` +
               `에러: ${errorMessage}. ` +
-              `@sparticuz/chromium-min은 Vercel 환경에 최적화되어 있으며 필요한 라이브러리를 포함해야 합니다. ` +
+              `chromium-min이 다운로드한 Chromium 바이너리가 필요한 라이브러리를 포함하지 않을 수 있습니다. ` +
+              `--single-process 옵션과 기타 시스템 라이브러리 의존성을 최소화하는 옵션을 추가했습니다. ` +
               `Vercel 공식 문서 참고: https://vercel.com/kb/guide/deploying-puppeteer-with-nextjs-on-vercel`
             );
           }
