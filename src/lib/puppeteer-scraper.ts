@@ -38,30 +38,28 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
       
       // executablePath 가져오기
-      // GitHub 이슈 #5662 참고: 실행 파일 경로 문제 해결
-      // https://github.com/puppeteer/puppeteer/issues/5662
+      // chromium-min은 런타임에 호스팅된 tar 파일에서 Chromium 바이너리를 다운로드
+      // Vercel 배포 가이드: Build Time에 chromium이 public/chromium-pack.tar 생성
+      // Runtime에 chromium-min이 다운로드 및 추출
       let chromiumExecutablePath: string;
       try {
-        // chromium.executablePath() 함수 호출
-        // 이 함수는 Chromium 바이너리의 실제 경로를 반환해야 함
+        // chromium-min의 executablePath()는 자동으로 다운로드 및 추출을 처리
+        // 첫 호출 시 다운로드, 이후 호출은 캐시된 경로 반환
         if (typeof chromium.executablePath === 'function') {
+          // chromium-min은 자동으로 GitHub releases에서 다운로드하거나
+          // public/chromium-pack.tar를 사용할 수 있음
           chromiumExecutablePath = await chromium.executablePath();
-          console.log('[Puppeteer] Chromium executablePath (함수):', chromiumExecutablePath);
+          console.log('[Puppeteer] Chromium executablePath (함수, 다운로드 완료):', chromiumExecutablePath?.substring(0, 100));
           
           // 경로가 유효한지 확인
           if (!chromiumExecutablePath || chromiumExecutablePath.trim() === '') {
             throw new Error('Chromium executablePath가 비어있습니다.');
           }
-          
-          // 경로 형식 검증 (Vercel 환경에서는 /var/task/로 시작해야 함)
-          if (!chromiumExecutablePath.startsWith('/') && !chromiumExecutablePath.includes('chromium')) {
-            console.warn('[Puppeteer] Chromium executablePath 경로 형식이 예상과 다릅니다:', chromiumExecutablePath);
-          }
         } else if (typeof chromium.executablePath === 'string') {
           chromiumExecutablePath = chromium.executablePath;
-          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath);
+          console.log('[Puppeteer] Chromium executablePath (문자열):', chromiumExecutablePath?.substring(0, 100));
         } else {
-          // executablePath가 없는 경우, chromium 객체에서 직접 찾기 시도
+          // executablePath가 없는 경우
           console.error('[Puppeteer] executablePath를 찾을 수 없음. Chromium 객체 구조:', {
             keys: Object.keys(chromium),
             hasExecutablePath: 'executablePath' in chromium,
@@ -71,12 +69,10 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
         }
       } catch (error) {
         console.error('[Puppeteer] Chromium executablePath 가져오기 실패:', error);
-        console.error('[Puppeteer] Chromium 객체 전체 구조:', {
+        console.error('[Puppeteer] Chromium 객체 구조:', {
           hasExecutablePath: 'executablePath' in chromium,
           executablePathType: typeof chromium.executablePath,
           chromiumKeys: Object.keys(chromium).slice(0, 20),
-          chromiumModuleType: typeof chromiumModule,
-          chromiumModuleKeys: Object.keys(chromiumModule).slice(0, 10),
         });
         throw new Error(`Chromium executablePath 설정 실패: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
