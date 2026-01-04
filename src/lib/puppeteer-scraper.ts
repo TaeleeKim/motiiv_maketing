@@ -11,10 +11,11 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
     // 실제 Vercel 배포 환경에서만 @sparticuz/chromium 사용
     const isVercel = !!process.env.VERCEL;
     
-    // Vercel 환경에서는 @sparticuz/chromium + puppeteer-core 사용
+    // Vercel 환경에서는 @sparticuz/chromium-min + puppeteer-core 사용
+    // Vercel 공식 문서 권장: https://vercel.com/kb/guide/deploying-puppeteer-with-nextjs-on-vercel
     if (isVercel) {
-      console.log('[Puppeteer] Vercel 환경 감지, @sparticuz/chromium 사용');
-      const chromiumModule = await import('@sparticuz/chromium');
+      console.log('[Puppeteer] Vercel 환경 감지, @sparticuz/chromium-min 사용');
+      const chromiumModule = await import('@sparticuz/chromium-min');
       const puppeteerCore = await import('puppeteer-core');
       
       // chromium 모듈에서 실제 chromium 객체 가져오기
@@ -32,7 +33,7 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       }
       
       // chromium 속성 안전하게 가져오기
-      // 버전 119는 안정적이며 graphics 속성 문제가 없음
+      // chromium-min은 Vercel 환경에 최적화된 경량 버전
       const chromiumArgs = Array.isArray(chromium.args) ? chromium.args : [];
       const chromiumViewport = chromium.defaultViewport || { width: 1280, height: 720 };
       
@@ -157,8 +158,8 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
             throw new Error(
               `Chromium 실행에 필요한 시스템 라이브러리를 찾을 수 없습니다. ` +
               `에러: ${errorMessage}. ` +
-              `@sparticuz/chromium 버전 119는 Vercel 환경에서 필요한 라이브러리를 포함해야 합니다. ` +
-              `chromium.args에 이미 필요한 옵션이 포함되어 있으므로 추가 args와 충돌하지 않도록 주의하세요.`
+              `@sparticuz/chromium-min은 Vercel 환경에 최적화되어 있으며 필요한 라이브러리를 포함해야 합니다. ` +
+              `Vercel 공식 문서 참고: https://vercel.com/kb/guide/deploying-puppeteer-with-nextjs-on-vercel`
             );
           }
         }

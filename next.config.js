@@ -7,7 +7,7 @@ const nextConfig = {
   // Vercel 환경에서 Puppeteer 관련 패키지 외부화
   // 이 설정은 Vercel 배포 시 필수입니다
   experimental: {
-    serverComponentsExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
+    serverComponentsExternalPackages: ['puppeteer-core', '@sparticuz/chromium-min'],
   },
   // 디버깅을 위한 소스맵 설정
   webpack: (config, { dev, isServer }) => {
