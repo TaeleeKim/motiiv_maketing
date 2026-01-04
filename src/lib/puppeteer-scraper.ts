@@ -98,31 +98,36 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
       });
       
       // launch 옵션 설정
-      // GitHub 이슈 #5662 해결 방법 적용:
-      // - executablePath 명시적 설정
-      // - 서버리스 환경에 맞는 args 추가
-      // - ENOEXEC/ENOENT 에러 방지
+      // libnss3.so 에러 해결: chromium.args에 이미 필요한 모든 옵션이 포함되어 있음
+      // 추가 args는 중복을 피하고 필요한 것만 추가
       try {
+        // chromium.args에 이미 포함된 옵션 확인
+        const existingArgs = new Set(chromiumArgs);
+        
+        // 추가로 필요한 args만 추가 (중복 방지)
+        const additionalArgs: string[] = [];
+        if (!existingArgs.has('--hide-scrollbars')) {
+          additionalArgs.push('--hide-scrollbars');
+        }
+        if (!existingArgs.has('--disable-web-security')) {
+          additionalArgs.push('--disable-web-security');
+        }
+        
+        // chromium.args를 먼저 사용 (시스템 라이브러리 문제 해결을 위한 옵션 포함)
+        const launchArgs = [...chromiumArgs, ...additionalArgs];
+        
         console.log('[Puppeteer] 브라우저 실행 시도:', {
           executablePath: chromiumExecutablePath?.substring(0, 100),
-          argsCount: chromiumArgs.length + 7,
+          argsCount: launchArgs.length,
+          chromiumArgsCount: chromiumArgs.length,
+          additionalArgsCount: additionalArgs.length,
         });
         
         browser = await puppeteerCore.default.launch({
-          args: [
-            ...chromiumArgs,
-            '--hide-scrollbars',
-            '--disable-web-security',
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--single-process', // Vercel 환경에서 안정성을 위해 추가
-          ],
+          args: launchArgs,
           defaultViewport: chromiumViewport,
           executablePath: chromiumExecutablePath,
           headless: chromiumHeadless,
-          // ignoreDefaultArgs: true, // 기본 args 무시 (필요시 주석 해제)
         });
         
         console.log('[Puppeteer] 브라우저 실행 성공');
@@ -131,14 +136,29 @@ export async function scrapeUrlWithPuppeteer(url: string): Promise<{ title: stri
         console.error('[Puppeteer] 실행 파일 경로:', chromiumExecutablePath);
         console.error('[Puppeteer] 실행 파일 경로 존재 여부 확인 필요');
         
-        // ENOEXEC/ENOENT 에러인 경우 더 자세한 정보 제공
+        // 다양한 에러 타입에 대한 처리
         if (launchError instanceof Error) {
-          if (launchError.message.includes('ENOEXEC') || launchError.message.includes('ENOENT')) {
+          const errorMessage = launchError.message;
+          
+          // ENOEXEC/ENOENT 에러
+          if (errorMessage.includes('ENOEXEC') || errorMessage.includes('ENOENT')) {
             throw new Error(
               `Chromium 실행 파일을 찾을 수 없습니다. ` +
               `경로: ${chromiumExecutablePath}. ` +
               `@sparticuz/chromium 패키지가 올바르게 설치되었는지 확인하세요. ` +
               `GitHub 이슈 참고: https://github.com/puppeteer/puppeteer/issues/5662`
+            );
+          }
+          
+          // libnss3.so 등 공유 라이브러리 에러
+          if (errorMessage.includes('libnss3.so') || 
+              errorMessage.includes('cannot open shared object file') ||
+              errorMessage.includes('shared libraries')) {
+            throw new Error(
+              `Chromium 실행에 필요한 시스템 라이브러리를 찾을 수 없습니다. ` +
+              `에러: ${errorMessage}. ` +
+              `@sparticuz/chromium 버전 119는 Vercel 환경에서 필요한 라이브러리를 포함해야 합니다. ` +
+              `chromium.args에 이미 필요한 옵션이 포함되어 있으므로 추가 args와 충돌하지 않도록 주의하세요.`
             );
           }
         }
