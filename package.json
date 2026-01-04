@@ -8,12 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:puppeteer:vercel": "USE_VERCEL_CHROMIUM=true tsx scripts/test-puppeteer-vercel.ts"
+    "test:puppeteer:vercel": "USE_VERCEL_CHROMIUM=true tsx scripts/test-puppeteer-vercel.ts",
+    "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
     "@google/generative-ai": "^0.21.0",
-    "@sparticuz/chromium": "^131.0.0",
     "@sparticuz/chromium-min": "^131.0.0",
     "axios": "^1.7.2",
     "cheerio": "^1.0.0-rc.12",
@@ -26,6 +26,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^131.0.0",
     "@types/node": "^20.12.12",
     "@types/prop-types": "^15.7.12",
     "@types/react": "^18.3.2",
